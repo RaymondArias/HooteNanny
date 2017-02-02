@@ -1,0 +1,394 @@
+package com.inasweaterpoorlyknit.hackpoly2016;
+
+import android.util.Log;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.PrintStream;
+import java.io.Serializable;
+import java.net.Socket;
+import java.util.ArrayList;
+import java.util.Random;
+
+/**
+ * Class that handles all the server commands in the app
+ * Created by raymond on 6/13/16.
+ */
+
+public class AWSServerCommand implements Serializable {
+    private int partyID;
+    private String partyName;
+    private String hostName;
+    private static String serverAddress = "ec2-52-40-196-229.us-west-2.compute.amazonaws.com";
+    private static String endConnect = "END THE SOCKET NOW!!!!";
+    private static int portNum = 7659;
+    public static int ADD_PARTY = 1;
+    public static int ADD_SONG_TO_PARTY = 2;
+    public static int REMOVE_SONG = 3;
+    public static int REMOVE_PARTY = 4;
+    public static int SHOW_PARTIES = 5;
+    public static int GET_SONGS = 6;
+    public static int VOTE_SONG = 7;
+    public static int GET_NOW_PLAYING = 8;
+    public static int GET_SONGS_CLIENT = 9;
+    public static int GET_CREATED_PARTIES = 10;
+
+    public String getHostName() {
+        return hostName;
+    }
+
+    public void setHostName(String hostName) {
+        this.hostName = hostName;
+    }
+
+    public String getPartyName() {
+
+        return partyName;
+    }
+
+    public void setPartyName(String partyName) {
+        this.partyName = partyName;
+    }
+
+    public int getPartyID() {
+
+        return partyID;
+    }
+
+    public void setPartyID(int partyID) {
+        this.partyID = partyID;
+    }
+
+    public AWSServerCommand(){
+        partyID = 0;
+        partyName = null;
+        hostName = null;
+    }
+
+    public int createParty(String partyName, String hostName)
+    {
+        this.partyName = partyName;
+        this.hostName = hostName;
+        try {
+            Socket socket = new
+                    Socket(serverAddress, portNum);
+            OutputStream os = socket.getOutputStream();
+            os.write(AWSServerCommand.ADD_PARTY);
+            partyID = Math.abs(new Random().nextInt());
+
+
+            PrintStream out = new PrintStream(os);
+            out.println(partyID);
+            out.println(partyName);
+            out.println(hostName);
+            socket.close();
+            Log.d("AWS Server", partyName + " added");
+            Log.d("AWS Server", "Party ID :"+partyID);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return partyID;
+    }
+
+    /**
+     * Add song to the party mapped to the party id number passed in
+     * @param partyID
+     * @param songID
+     * @param songName
+     * @param thumbNail
+     */
+    public void addSongToParty(int partyID, String songID, String songName, String thumbNail)
+    {
+        try {
+            Socket socket = new Socket(serverAddress, portNum);
+            OutputStream os = socket.getOutputStream();
+            os.write(ADD_SONG_TO_PARTY);    //Notify server which process needs to be ran
+
+            int songIDNum = new Random().nextInt();
+            PrintStream printStream = new PrintStream(os);
+            printStream.println(partyID);   //Tell Server which party the song is being added
+            printStream.println(songID);    //add the song
+            printStream.println(songName);
+            printStream.println(thumbNail);
+            printStream.println(songIDNum);
+
+            socket.close();
+            Log.d("AWS Server", songName + " added to party id: "+ partyID);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    /**
+     * Remove the party mapped to partyID from server
+     * @param partyID
+     * @param partyName
+     */
+    public void removeParty(int partyID, String partyName)
+    {
+        try {
+            Socket socket = new Socket(serverAddress, portNum);
+            OutputStream os = socket.getOutputStream();
+            os.write(REMOVE_PARTY);    //Notify server that a party needs to remove
+            PrintStream printStream = new PrintStream(os);
+            printStream.println(partyID);   //Tell Server which party is being removed
+            printStream.println(partyName);
+
+
+            socket.close();
+            Log.d("AWS Server", partyName + " removed");
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    /**
+     * Gets the parties from server which match string, partyQuery
+     * @param partyQuery
+     * @param partyNames
+     * @param hostNames
+     * @param matchedParties
+     */
+    public void getOpenParties(String partyQuery, ArrayList<String> partyNames,
+                               ArrayList<String> hostNames, ArrayList<Party> matchedParties)
+    {
+        try {
+            Socket socket = new Socket(serverAddress, portNum);
+            OutputStream os = socket.getOutputStream();
+            os.write(SHOW_PARTIES);    //Notify server to show list of all parties
+
+            InputStream in = socket.getInputStream();
+            InputStreamReader read = new InputStreamReader(in, "UTF-8");
+            BufferedReader br = new BufferedReader(read);
+
+            PrintStream printStream = new PrintStream(os);
+            printStream.println(partyQuery);    //Give the server the name of party beign searched for
+            String firstStr = br.readLine();
+            if(firstStr.equals(endConnect))
+            {
+                socket.close();
+                return;
+            }
+            String aPartyID = firstStr;
+            String aPartyName = br.readLine();
+            String aHostname = br.readLine();
+
+            while(!aPartyID.equals(endConnect))
+            {
+                partyNames.add("Party Name: " +aPartyName);
+                hostNames.add("Host's Name: " +aHostname);
+                matchedParties.add(new Party(Integer.parseInt(aPartyID), aPartyName, aHostname));
+                aPartyID = br.readLine();
+                Log.d("AWS Server", aPartyName +": found matching " + partyQuery);
+                if(aPartyID.equals(endConnect))
+                    break;
+                aPartyName = br.readLine();
+                aHostname = br.readLine();
+
+            }
+
+            socket.close();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+    }
+    public boolean getPlaylistHost(int partyID, ArrayList<SongData> playList)
+    {
+        try {
+            Socket socket = new Socket(serverAddress, portNum);
+            OutputStream os = socket.getOutputStream();
+            InputStream in = socket.getInputStream();
+            InputStreamReader read = new InputStreamReader(in, "UTF-8");
+            BufferedReader br = new BufferedReader(read);
+
+            os.write(GET_SONGS);    //Notify server that a party needs to removed
+
+
+            PrintStream printStream = new PrintStream(os);
+            printStream.println(partyID);   //Tell Server which party to get song from
+            String listChanged = br.readLine();
+            if(listChanged == null)
+            {
+                return false;
+            }
+            if(listChanged.equals("NO CHANGE"))
+            {
+                return false;
+            }
+            else
+            {
+                playList.clear();
+                int listSize = Integer.parseInt(listChanged);
+
+                for(int i = 0; i < listSize; i++)
+                {
+                    String songID = br.readLine();
+                    String songName = br.readLine();
+                    String thumbNailUrl = br.readLine();
+                    int songIDNum = Integer.parseInt(br.readLine());
+                    playList.add(new SongData(songID, songName, thumbNailUrl, 0, songIDNum));
+                }
+
+
+                socket.close();
+                Log.d("AWS Server", "Getting songs from party ID: " + partyID);
+
+            }
+
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return true;
+
+
+    }
+
+    public void getPlaylistClient(int partyID, ArrayList<SongData> playList)
+    {
+        playList.clear();
+        try {
+            Socket socket = new Socket(serverAddress, portNum);
+            OutputStream os = socket.getOutputStream();
+            InputStream in = socket.getInputStream();
+            InputStreamReader read = new InputStreamReader(in, "UTF-8");
+            BufferedReader br = new BufferedReader(read);
+
+            os.write(GET_SONGS_CLIENT);    //Notify server that a party needs to removed
+
+
+            PrintStream printStream = new PrintStream(os);
+            printStream.println(partyID);   //Tell Server which party to get song from
+            int listSize = Integer.parseInt(br.readLine());
+
+            for(int i = 0; i < listSize; i++)
+            {
+                String songID = br.readLine();
+                String songName = br.readLine();
+                String thumbNailUrl = br.readLine();
+                int songIDNum = Integer.parseInt(br.readLine());
+                playList.add(new SongData(songID, songName, thumbNailUrl, 0, songIDNum));
+            }
+
+
+            socket.close();
+            Log.d("AWS Server", "Getting songs from party ID: " + partyID);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    public void removeSong(int partyID, String songID, String songName) {
+        try {
+            Socket socket = new Socket(serverAddress, portNum);
+            OutputStream os = socket.getOutputStream();
+            os.write(REMOVE_SONG);    //Notify server that a party needs to remove a song
+
+
+            PrintStream printStream = new PrintStream(os);
+            printStream.println(partyID);   //Tell Server which party is removing a song
+            printStream.println(songID);    //Tell server song to remove from party
+            printStream.println(songName);
+
+
+            socket.close();
+            Log.d("AWS Server", partyName + " removed " + songName + " from playlist");
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void voteCountChanged(SongData song, int voteNum, int partyID){
+
+        try {
+            Socket socket = new Socket(serverAddress, portNum);
+            OutputStream os = socket.getOutputStream();
+            InputStream in = socket.getInputStream();
+            InputStreamReader read = new InputStreamReader(in, "UTF-8");
+            BufferedReader br = new BufferedReader(read);
+            os.write(VOTE_SONG);    //Notify server that a party needs to vote
+            PrintStream printStream = new PrintStream(os);
+            printStream.println(partyID);   //Tell Server which party to get song from
+            printStream.println(song.getSongIDNum());
+            printStream.println(voteNum);
+
+            socket.close();
+            Log.d("AWS Server", "Getting songs from party ID: " + partyID);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    public SongData getNowPlaying(int partyID)
+    {
+        SongData nowPlayingSong = null;
+        try {
+            Socket socket = new Socket(serverAddress, portNum);
+            OutputStream os = socket.getOutputStream();
+            InputStream in = socket.getInputStream();
+            InputStreamReader read = new InputStreamReader(in, "UTF-8");
+            BufferedReader br = new BufferedReader(read);
+
+            os.write(GET_NOW_PLAYING);    //Notify server that a party needs to vote
+
+            PrintStream printStream = new PrintStream(os);
+            printStream.println(partyID);   //Tell Server which party to get song from
+
+            String nowPlayingSongTitle = br.readLine();
+            String nowPlayingSongThumbnail = br.readLine();
+            nowPlayingSong = new SongData(null, nowPlayingSongTitle, nowPlayingSongThumbnail, 0, 0);
+
+            socket.close();
+            Log.d("AWS Server", "Getting songs from party ID: " + partyID);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return nowPlayingSong;
+    }
+
+    public ArrayList<Party> getCreatedParties(ArrayList<String> partyIDs) throws IOException {
+        ArrayList<Party> myParties = new ArrayList<>();
+        Socket socket = new Socket(serverAddress, portNum);
+        OutputStream os = socket.getOutputStream();
+        Log.d("register", "Get PArty");
+        os.write(GET_CREATED_PARTIES);    //Notify server that a user wants his party
+        InputStream in = socket.getInputStream();
+        InputStreamReader read = new InputStreamReader(in, "UTF-8");
+        BufferedReader br = new BufferedReader(read);
+        PrintStream printStream = new PrintStream(os);
+
+        printStream.println(partyIDs.size()); //Send the number of keys for user
+
+        for(int i = 0; i < partyIDs.size(); i++)
+        {
+<<<<<<< HEAD
+            Log.d("register", "loop");
+=======
+>>>>>>> b3c3f465c9753c012d61de37837db44a6f146521
+            int iPartyID = Integer.parseInt(partyIDs.get(i));
+            printStream.println(iPartyID); //send the server a party id
+            String partyName = br.readLine();   //get the partyName
+            if(partyName.equals(AWSServerCommand.endConnect))
+            {
+                return myParties;
+            }
+            String hostName = br.readLine();    //get the hostName
+            myParties.add(new Party(iPartyID, partyName, hostName));
+        }
+        return myParties;
+    }
+
+}

@@ -1,0 +1,512 @@
+package com.inasweaterpoorlyknit.hackpoly2016;
+
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.annotation.TargetApi;
+import android.app.Activity;
+import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.support.annotation.NonNull;
+//import android.support.design.widget.Snackbar;
+import android.support.v7.app.AppCompatActivity;
+import android.app.LoaderManager.LoaderCallbacks;
+import android.content.SharedPreferences;
+
+import android.content.CursorLoader;
+import android.content.Loader;
+import android.database.Cursor;
+import android.net.Uri;
+import android.os.AsyncTask;
+
+import android.os.Build;
+import android.os.Bundle;
+import android.provider.ContactsContract;
+import android.text.TextUtils;
+import android.util.Log;
+import android.view.KeyEvent;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.inputmethod.EditorInfo;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ListView;
+import android.widget.TextView;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.RunnableFuture;
+
+import static android.Manifest.permission.READ_CONTACTS;
+
+/**
+ * A login screen that offers login via email/password.
+ */
+public class RegisterPartyActivity extends AppCompatActivity implements LoaderCallbacks<Cursor> {
+
+    /**
+     * Id to identity READ_CONTACTS permission request.
+     */
+    private static final int REQUEST_READ_CONTACTS = 0;
+
+    /**
+     * A dummy authentication store containing known user names and passwords.
+     * TODO: remove after connecting to a real authentication system.
+     */
+    private static final String[] DUMMY_CREDENTIALS = new String[]{
+            "foo@example.com:hello", "bar@example.com:world"
+    };
+    /**
+     * Keep track of the login task to ensure we can cancel it if requested.
+     */
+    private UserLoginTask mAuthTask = null;
+    private AWSServerCommand serverCommand;
+
+    // public string holding the name of the app's user preferences
+    public static final String PLAYLIST_PREFS = "PlaylistPrefs";
+    // public string holding playlist string set name
+    public static final String PLAYLIST_STRING_SET = "PlaylistStringSet";
+
+    // UI references.
+    private AutoCompleteTextView partyName;
+    private EditText partyHost;
+    private View mProgressView;
+    private View mLoginFormView;
+    private ListView mPlaylistListView;
+    private OpenPartyListAdapter playlistAdapter;
+<<<<<<< HEAD
+    private Activity context;
+    private ArrayList<String> partyNames;
+    private ArrayList<String> hostNames;
+    private ArrayList<Party> partyArrayList;
+=======
+>>>>>>> b3c3f465c9753c012d61de37837db44a6f146521
+
+    Set<String> playlistIDs;
+    int newPartyID;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_register_party);
+        // Set up the login form.
+        partyName = (AutoCompleteTextView) findViewById(R.id.party_name);
+        populateAutoComplete();
+        mPlaylistListView = (ListView) findViewById(R.id.playlist_list_view);
+        context = this;
+        serverCommand = new AWSServerCommand();
+        partyNames = new ArrayList<>();
+        hostNames = new ArrayList<>();
+        playlistAdapter = new OpenPartyListAdapter(context, partyNames, hostNames);
+        mPlaylistListView.setAdapter(playlistAdapter);
+        mPlaylistListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> adapterView, View view, int position, long l) {
+                Party aParty = partyArrayList.get(position);
+                if(aParty != null)
+                {
+                    serverCommand.setPartyID(aParty.getPartyID());
+                    Intent intent = new Intent(context, ServerLobby.class);
+                    intent.putExtra("AWSServerCommand", serverCommand);
+                    startActivity(intent);
+
+                }
+            }
+        });
+
+        partyHost = (EditText) findViewById(R.id.host_name);
+        partyHost.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+            @Override
+            public boolean onEditorAction(TextView textView, int id, KeyEvent keyEvent) {
+                if (id == R.id.login || id == EditorInfo.IME_NULL) {
+                    attemptLogin();
+                    return true;
+                }
+                return false;
+            }
+        });
+
+        Button registerPartyBtn = (Button) findViewById(R.id.register_party);
+        registerPartyBtn.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                //attemptLogin();
+                final String partyNameStr = partyName.getText().toString(); //Get the party name
+                final String hostNameStr = partyHost.getText().toString();  //Get the host's name
+                final Intent intent = new Intent(view.getContext(), ServerLobby.class);
+                Runnable addParty = new Runnable() {
+                    @Override
+                    public void run() {
+                        newPartyID = serverCommand.createParty(partyNameStr, hostNameStr); //Contact server to register party
+                        intent.putExtra("AWSServerCommand", serverCommand);
+                        playlistIDs.add(Integer.toString(newPartyID));// get shared preference for our app and add the song the user chose and commit the changes
+                        SharedPreferences.Editor editor = getSharedPreferences(PLAYLIST_PREFS, MODE_PRIVATE).edit();
+                        editor.putStringSet(PLAYLIST_STRING_SET, playlistIDs);
+                        editor.commit();
+                        startActivity(intent);
+                    }
+                };
+                Thread createPartyThread = new Thread(addParty);
+                createPartyThread.start();
+
+
+
+
+            }
+        });
+
+        mLoginFormView = findViewById(R.id.login_form);
+        mProgressView = findViewById(R.id.login_progress);
+<<<<<<< HEAD
+
+=======
+        mPlaylistListView = (ListView) findViewById(R.id.playlist_list_view);
+>>>>>>> b3c3f465c9753c012d61de37837db44a6f146521
+
+        // retrieve the preferences of the app for the user
+        SharedPreferences prefs = getSharedPreferences(PLAYLIST_PREFS, MODE_PRIVATE);
+        // if the preferences does not find a preset song, it will play Heart Gongs by Software Blonde
+        playlistIDs = prefs.getStringSet(PLAYLIST_STRING_SET, null);
+        if(playlistIDs == null){
+            playlistIDs = new HashSet<String>();
+        } else {
+<<<<<<< HEAD
+            final ArrayList<String> playlistIDsArrayList = new ArrayList<String>(playlistIDs);
+            Runnable getMyParty = new Runnable() {
+                @Override
+                public void run() {
+                    Log.d("Register", "test");
+                    // send IDs to the server
+                    try {
+                        Log.d("Register", "Try");
+                        partyArrayList = serverCommand.getCreatedParties(playlistIDsArrayList);
+                        for(int i = 0; i < partyArrayList.size(); i++)
+                        {
+                            Log.d("Register", playlistIDsArrayList.get(i));
+                        }
+                        //partyNames.clear();
+                        //hostNames.clear();
+                        for(int i = 0; i < partyArrayList.size(); i++){
+                            Log.d("Register", "Loop2");
+                            Party iParty = partyArrayList.get(i);
+                            partyNames.add(iParty.getPartyName());
+                            hostNames.add(iParty.getHostName());
+                        }
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                Log.d("Register", "Update Adapter");
+                                playlistAdapter.notifyDataSetChanged();
+
+                            }
+                        });
+
+                    } catch (IOException e) {
+                        Log.d("Register", "catch");
+                        e.printStackTrace();
+                    }
+
+                }
+            };
+            Thread thread = new Thread(getMyParty);
+            thread.start();
+
+=======
+            ArrayList<String> playlistIDsArrayList = new ArrayList<String>(playlistIDs);
+            // send IDs to the server
+            try {
+                ArrayList<Party> partyArrayList = serverCommand.getCreatedParties(playlistIDsArrayList);
+                ArrayList<String> partyNames = new ArrayList<>();
+                ArrayList<String> hostNames = new ArrayList<>();
+                for(int i = 0; i < partyArrayList.size(); i++){
+                    Party iParty = partyArrayList.get(i);
+                    partyNames.add(iParty.getPartyName());
+                    hostNames.add(iParty.getHostName());
+                }
+                playlistAdapter = new OpenPartyListAdapter(this, partyNames, hostNames);
+                mPlaylistListView.setAdapter(playlistAdapter);
+                playlistAdapter.notifyDataSetChanged();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+>>>>>>> b3c3f465c9753c012d61de37837db44a6f146521
+        }
+
+
+        /* ADDING TO PREFERENCES
+        //returnedVideoTitle = data.getStringExtra("Song Title");
+
+        */
+    }
+
+    /**
+     * Register a party in the aws server and the database
+     * @param partyName
+     * @param hostName
+     */
+    private void registerParty(String partyName, String hostName)
+    {
+        //Do register algorithm
+    }
+
+
+    private void populateAutoComplete() {
+        if (!mayRequestContacts()) {
+            return;
+        }
+
+        getLoaderManager().initLoader(0, null, this);
+    }
+
+    private boolean mayRequestContacts() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            return true;
+        }
+        if (checkSelfPermission(READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
+            return true;
+        }
+        if (shouldShowRequestPermissionRationale(READ_CONTACTS)) {
+            /*
+            Snackbar.make(partyName, R.string.permission_rationale, Snackbar.LENGTH_INDEFINITE)
+                    .setAction(android.R.string.ok, new View.OnClickListener() {
+                        @Override
+                        @TargetApi(Build.VERSION_CODES.M)
+                        public void onClick(View v) {
+                            requestPermissions(new String[]{READ_CONTACTS}, REQUEST_READ_CONTACTS);
+                        }
+                    });*/
+        } else {
+            requestPermissions(new String[]{READ_CONTACTS}, REQUEST_READ_CONTACTS);
+        }
+        return false;
+    }
+
+    /**
+     * Callback received when a permissions request has been completed.
+     */
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        if (requestCode == REQUEST_READ_CONTACTS) {
+            if (grantResults.length == 1 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                populateAutoComplete();
+            }
+        }
+    }
+
+
+    /**
+     * Attempts to sign in or register the account specified by the login form.
+     * If there are form errors (invalid email, missing fields, etc.), the
+     * errors are presented and no actual login attempt is made.
+     */
+    private void attemptLogin() {
+        if (mAuthTask != null) {
+            return;
+        }
+
+        // Reset errors.
+        partyName.setError(null);
+        partyHost.setError(null);
+
+        // Store values at the time of the login attempt.
+        String email = partyName.getText().toString();
+        String password = partyHost.getText().toString();
+
+        boolean cancel = false;
+        View focusView = null;
+
+        // Check for a valid password, if the user entered one.
+        if (!TextUtils.isEmpty(password) && !isPasswordValid(password)) {
+            partyHost.setError(getString(R.string.error_invalid_password));
+            focusView = partyHost;
+            cancel = true;
+        }
+
+        // Check for a valid email address.
+        if (TextUtils.isEmpty(email)) {
+            partyName.setError(getString(R.string.error_field_required));
+            focusView = partyName;
+            cancel = true;
+        } else if (!isEmailValid(email)) {
+            partyName.setError(getString(R.string.error_invalid_email));
+            focusView = partyName;
+            cancel = true;
+        }
+
+        if (cancel) {
+            // There was an error; don't attempt login and focus the first
+            // form field with an error.
+            focusView.requestFocus();
+        } else {
+            // Show a progress spinner, and kick off a background task to
+            // perform the user login attempt.
+            showProgress(true);
+            mAuthTask = new UserLoginTask(email, password);
+            mAuthTask.execute((Void) null);
+        }
+    }
+
+    private boolean isEmailValid(String email) {
+        //TODO: Replace this with your own logic
+        return email.contains("@");
+    }
+
+    private boolean isPasswordValid(String password) {
+        //TODO: Replace this with your own logic
+        return password.length() > 4;
+    }
+
+    /**
+     * Shows the progress UI and hides the login form.
+     */
+    @TargetApi(Build.VERSION_CODES.HONEYCOMB_MR2)
+    private void showProgress(final boolean show) {
+        // On Honeycomb MR2 we have the ViewPropertyAnimator APIs, which allow
+        // for very easy animations. If available, use these APIs to fade-in
+        // the progress spinner.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB_MR2) {
+            int shortAnimTime = getResources().getInteger(android.R.integer.config_shortAnimTime);
+
+            mLoginFormView.setVisibility(show ? View.GONE : View.VISIBLE);
+            mLoginFormView.animate().setDuration(shortAnimTime).alpha(
+                    show ? 0 : 1).setListener(new AnimatorListenerAdapter() {
+                @Override
+                public void onAnimationEnd(Animator animation) {
+                    mLoginFormView.setVisibility(show ? View.GONE : View.VISIBLE);
+                }
+            });
+
+            mProgressView.setVisibility(show ? View.VISIBLE : View.GONE);
+            mProgressView.animate().setDuration(shortAnimTime).alpha(
+                    show ? 1 : 0).setListener(new AnimatorListenerAdapter() {
+                @Override
+                public void onAnimationEnd(Animator animation) {
+                    mProgressView.setVisibility(show ? View.VISIBLE : View.GONE);
+                }
+            });
+        } else {
+            // The ViewPropertyAnimator APIs are not available, so simply show
+            // and hide the relevant UI components.
+            mProgressView.setVisibility(show ? View.VISIBLE : View.GONE);
+            mLoginFormView.setVisibility(show ? View.GONE : View.VISIBLE);
+        }
+    }
+
+    @Override
+    public Loader<Cursor> onCreateLoader(int i, Bundle bundle) {
+        return new CursorLoader(this,
+                // Retrieve data rows for the device user's 'profile' contact.
+                Uri.withAppendedPath(ContactsContract.Profile.CONTENT_URI,
+                        ContactsContract.Contacts.Data.CONTENT_DIRECTORY), ProfileQuery.PROJECTION,
+
+                // Select only email addresses.
+                ContactsContract.Contacts.Data.MIMETYPE +
+                        " = ?", new String[]{ContactsContract.CommonDataKinds.Email
+                .CONTENT_ITEM_TYPE},
+
+                // Show primary email addresses first. Note that there won't be
+                // a primary email address if the user hasn't specified one.
+                ContactsContract.Contacts.Data.IS_PRIMARY + " DESC");
+    }
+
+    @Override
+    public void onLoadFinished(Loader<Cursor> cursorLoader, Cursor cursor) {
+        List<String> emails = new ArrayList<>();
+        cursor.moveToFirst();
+        while (!cursor.isAfterLast()) {
+            emails.add(cursor.getString(ProfileQuery.ADDRESS));
+            cursor.moveToNext();
+        }
+
+        addEmailsToAutoComplete(emails);
+    }
+
+    @Override
+    public void onLoaderReset(Loader<Cursor> cursorLoader) {
+
+    }
+
+    private void addEmailsToAutoComplete(List<String> emailAddressCollection) {
+        //Create adapter to tell the AutoCompleteTextView what to show in its dropdown list.
+        ArrayAdapter<String> adapter =
+                new ArrayAdapter<>(RegisterPartyActivity.this,
+                        android.R.layout.simple_dropdown_item_1line, emailAddressCollection);
+
+        partyName.setAdapter(adapter);
+    }
+
+
+    private interface ProfileQuery {
+        String[] PROJECTION = {
+                ContactsContract.CommonDataKinds.Email.ADDRESS,
+                ContactsContract.CommonDataKinds.Email.IS_PRIMARY,
+        };
+
+        int ADDRESS = 0;
+        int IS_PRIMARY = 1;
+    }
+
+    /**
+     * Represents an asynchronous login/registration task used to authenticate
+     * the user.
+     */
+    public class UserLoginTask extends AsyncTask<Void, Void, Boolean> {
+
+        private final String mEmail;
+        private final String mPassword;
+
+        UserLoginTask(String email, String password) {
+            mEmail = email;
+            mPassword = password;
+        }
+
+        @Override
+        protected Boolean doInBackground(Void... params) {
+            // TODO: attempt authentication against a network service.
+
+            try {
+                // Simulate network access.
+                Thread.sleep(2000);
+            } catch (InterruptedException e) {
+                return false;
+            }
+
+            for (String credential : DUMMY_CREDENTIALS) {
+                String[] pieces = credential.split(":");
+                if (pieces[0].equals(mEmail)) {
+                    // Account exists, return true if the password matches.
+                    return pieces[1].equals(mPassword);
+                }
+            }
+
+            // TODO: register the new account here.
+            return true;
+        }
+
+        @Override
+        protected void onPostExecute(final Boolean success) {
+            mAuthTask = null;
+            showProgress(false);
+
+            if (success) {
+                finish();
+            } else {
+                partyHost.setError(getString(R.string.error_incorrect_password));
+                partyHost.requestFocus();
+            }
+        }
+
+        @Override
+        protected void onCancelled() {
+            mAuthTask = null;
+            showProgress(false);
+        }
+    }
+}

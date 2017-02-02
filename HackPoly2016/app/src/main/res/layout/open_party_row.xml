@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <TextView
+        android:text="Party Name:"
+        android:layout_width="200dp"
+        android:layout_height="50dp"
+        android:layout_marginLeft="20dp"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="22dp"
+        android:id="@+id/party_name_row"
+        android:textColor="@color/abc_search_url_text_pressed"
+        android:textSize="20dp"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true" />
+
+    <TextView
+        android:text="Host Name:"
+        android:layout_width="200dp"
+        android:layout_height="50dp"
+        android:id="@+id/host_name_row"
+        android:textColor="@color/abc_search_url_text_pressed"
+        android:textSize="15dp"
+        android:layout_below="@+id/party_name_row"
+        android:layout_alignLeft="@+id/party_name_row"
+        android:layout_alignStart="@+id/party_name_row" />
+</RelativeLayout>
